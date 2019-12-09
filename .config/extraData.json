@@ -1,0 +1,29 @@
+{
+    "test_case": {
+        "description": null,
+        "select": [
+            {
+                "identifier":"test_identifier",
+                "passed_by_another_script": false,
+                "from": null,
+                "fields": null,
+                "extension": null,
+                "where": [
+                    "xyz.rail_id"
+                ]
+            }
+        ],
+        "update": [
+            {
+                "table": null,
+                "set": null
+            }
+        ],
+        "expression": [
+            "Hello"
+        ]
+    },
+    "CONSTANTS":{
+        "intial_volitality":
+    }
+}
