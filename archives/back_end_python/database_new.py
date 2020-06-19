@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 import sys
 import json
-import mysqlConnector as sql
+import mysqlConnector_new as sql
 import analytics
 import logging
 import os
@@ -34,13 +34,14 @@ class main:
     4)PLEASE MAKE SURE YOU PASS 'null' AND NOT AN EMPTY LIST OR A DICTIONARY
     '''
     # Constructor which decodes the incoming json data
+
     def __init__(self, jsonData=None, levelNumber=None):
-        logging.info("Constructor of class __name__:{} __class__:{} was called in levelNumber:{}".format(
-            __name__, __class__, levelNumber))
+        logging.info("Constructor of class __name__:{} was called in levelNumber:{}".format(
+            __name__, levelNumber))
         if(jsonData == None and levelNumber == None):
             logging.info("No parameters passed at object creation")
         elif(jsonData != None and levelNumber != None):
-            self.input(jsonData,levelNumber)
+            self.input(jsonData, levelNumber)
         else:
             logging.critical("Input parameters error!")
 
@@ -56,54 +57,21 @@ class main:
             self.jsonString = jsonData
             logging.debug("SUCCESS")
 
-        logging.debug("The jsonString is of datatype:"+str(type(self.jsonString)))
+        logging.debug("The jsonString is of datatype:" +
+                      str(type(self.jsonString)))
 
         # logging.debug(str(self.jsonString))
         logging.debug("Input data is:"+str(self.jsonString))
 
         # assert type(self.jsonString) is dict
-        logging.debug("The jsonString is of datatype:"+str(type(self.jsonString)))
+        logging.debug("The jsonString is of datatype:" +
+                      str(type(self.jsonString)))
 
         self.levelNumber = levelNumber
-
-        self.header = self.jsonString["HEADER"]  # Gets the header
-        self.database = self.header["DATABASE"]  # database name within header
-        self.table = self.header["TABLE_NAME"]  # table name name within header
-        self.requestType = self.header["REQUEST_TYPE"]  # request type name within header
-
-        self.data = self.jsonString["DATA"]  # Gets the data
-        self.fields = self.data["FIELDS"]  # fields name within header
-        self.setClause = self.data["SET"]  # setClause name within header
-        self.whereClause = self.data["WHERE"]  # whereClause name within header
 
         self.footer = self.jsonString["FOOTER"]  # Gets the footer
         self.updateList = self.footer["UPDATE"]  # update name within header
         self.conditionList = self.footer["DEP"]  # dep name within header
-        try:
-            self.runCondition = self.footer["CONDITION"]  # Run analytics
-            self.analyticsArguments = self.data["FIELDS"]
-        except:
-            logging.warning("Change 'DATA ABOUT THE REQUEST' to 'CONDITION'")
-        '''
-        WRITE THE CODE HERE TO GET THE COMMENT FROM THE FOOTER SECTION
-        '''
-        try:
-            self.mysqlConnection.use(self.database) #This can raise unknown database error -- Needs to be caught correctly
-        except Exception:           #Not sure if this is correct
-            logging.debug("Failed to connect to the database, this is when you are using non-persistent connections")
-
-
-    def getDatabase(self):
-        """
-        Returns the current database name.
-        """
-        return self.database
-
-    def getTable(self):
-        """
-        Returns the current table name.
-        """
-        return self.table
 
     # Establishes a connection between the script and the mysql database
     def setConnection(self, connection=None):
@@ -112,7 +80,8 @@ class main:
         """
         if(connection == None):
             logging.info("Creating a new connection to the database")
-            self.mysqlConnection = sql.mysqlConnector(option_files=(PATH+".config/mysql.cnf"))
+            self.mysqlConnection = sql.mysqlConnector(
+                option_files=(PATH+".config/mysql.cnf"))
             logging.info("Connection successful")
         else:
             logging.info(
@@ -121,8 +90,8 @@ class main:
         try:
             self.mysqlConnection.use(self.database)
         except AttributeError:
-            logging.debug("Failed to connect to the database, this is when you are using persistent connections")
-
+            logging.debug(
+                "Failed to connect to the database, this is when you are using persistent connections")
 
     def processRequest(self):
         """
@@ -156,27 +125,7 @@ class main:
             logging.info("conditionList is null")
         # cannot test for len(self.conditionList) == 0 i.e when there is a empty list passed, raises TypeError
         if(self.conditionList == None or self.conditionFlag == True):
-            '''
-            NOTE: THAT WHEN A SELECT IS USED IT RETURNS DATA AND CANNOT BE USED TO UPDATE ANOTHER TABLE.
-            I NEED TO RESTRUCTURE IT TO BE ABLE TO RETURN AS WELL AS RUN AN UPDATE.
-            '''
-            if(self.requestType == "insert"):
-                self.mysqlConnection.insert(self.getTable(), self.fields)
-            elif(self.requestType == "delete"):
-                self.mysqlConnection.delete(
-                    self.getTable(), self.whereClause)
-            elif(self.requestType == "update"):
-                self.mysqlConnection.update(
-                    self.getTable(), self.setClause, self.whereClause)
-            elif(self.requestType == "select"):
-                try:
-                    return self.mysqlConnection.select([self.getTable()], self.fields, self.whereClause)
-                except AssertionError as err:
-                    logging.critical("ASSERTION ERROR IN SELECT("+str(type([self.getTable()]))+","+str(
-                        type(self.fields))+","+str(type(self.whereClause))+") or could be "+str(err))
-            elif(self.requestType == "alter"):
-                logging.warning(
-                    "ALTER IS NOT SUPPORTED YET, WILL BE ADDED IN A NEWER VERSION!")
+            self.mysqlConnection.execute(self.jsonString["HEADER"]["REQUEST_TYPE"],self.jsonString["DATA"])
             if(self.updateList):
                 try:
                     for anObject in self.updateList:
@@ -197,24 +146,24 @@ class main:
         else:
             logging.critical("Queries condition has not been executed")
 
-    def generateAnalytics(self):  # Write # logger function for this
-        """
-        Should work only when there it is of the type 'update' or 'insert'
-        """
-        if(self.conditionFlag == False):
-            return
-        else:
-            try:
-                genAnalytics = analytics.analytics(self.mysqlConnection, **self.analyticsArguments)
-                genAnalytics.generateAnalytics(self.runCondition)
-            except AttributeError as err:
-                logging.warning(
-                    "This may occur when it is a SELECT statement. ERROR:"+str(err))
-        return
+    # def generateAnalytics(self):  # Write # logger function for this
+    #     """
+    #     Should work only when there it is of the type 'update' or 'insert'
+    #     """
+    #     if(self.conditionFlag == False):
+    #         return
+    #     else:
+    #         try:
+    #             genAnalytics = analytics.analytics(
+    #                 self.mysqlConnection, **self.analyticsArguments)
+    #             genAnalytics.generateAnalytics(self.runCondition)
+    #         except AttributeError as err:
+    #             logging.warning(
+    #                 "This may occur when it is a SELECT statement. ERROR:"+str(err))
+    #     return
 
     def closeConnection(self):
         self.mysqlConnection.closeConnection()
-
 
 if __name__ == '__main__':
     logging.info("Start of database.py")
@@ -223,7 +172,7 @@ if __name__ == '__main__':
         process = main(sys.argv[1], 0)
         process.setConnection()
         process.processRequest()
-        process.generateAnalytics()
+        # process.generateAnalytics()
         process.closeConnection()
     else:
         logging.critical("Invalid number of arguments was passed the script.")
