@@ -1,14 +1,18 @@
-import React from 'react';
+import React from "react";
+
 // import logo from './logo.svg';
 // import './App.css';
 
 // import React from "react";
 
-// import "antd/dist/antd.css";
+import "antd/dist/antd.css";
+import UserHomePage from "./Components/UserHomePage"
 
-// import Login from "./Components/Login";
+// import LoginPage from "./Components/LoginPage";
+// import LoginPageNew from "./Components/LoginPageNew";
 // import Landing from "./Components/Landing";
 // import Registration from "./Components/Registration";
+// import darkTheme from '@ant-design/dark-theme';
 
 
 class App extends React.Component {
@@ -16,7 +20,8 @@ class App extends React.Component {
     super(props);
     this.state = {
       loggedIn: false,
-      page: localStorage.getItem("token") ? "landing" : "login"
+      page: localStorage.getItem("token") ? "landing" : "login",
+      sock: null,
     };
   }
 
@@ -52,19 +57,19 @@ class App extends React.Component {
             >
               <h1>DATAVIZ</h1>
             </header>
-            {/* <Login
+            {/* { <LoginPageNew
               style={{ paddingTop: "400px" }}
               loggedIn={this.state.loggedIn}
               updateLogin={this.updateLogin}
               updateToRegister={this.updateToRegister}
-            /> */}
+            /> } */}
           </div>
         );
         break;
       // case "landing":
       //   page = <Landing updateLogout={this.updateLogout} />;
       //   break;
-      // case "register":
+      // case "register":UserHomePage
       //   page = <Registration />;
       //   break;
       default:
@@ -83,7 +88,9 @@ class App extends React.Component {
             <Menu.Item key="0">STOCK ANALYSIS</Menu.Item>
            LOL
         </Menu> */}
-        {page}
+        {/* {page} */}
+        {/* <h1>HELLO WHATS HAPPENING?</h1> */}
+        <UserHomePage />
       </div>
     );
   }

@@ -1,9 +1,21 @@
 #!/usr/bin/python3
 import sys
 import zmq
-
+import os
 import json
 import logging
+
+
+PATH = None
+pathToExeFromCurDir = sys.argv[0]
+current_directory = os.getcwd()
+if(pathToExeFromCurDir.startswith("/")):
+    PATH = pathToExeFromCurDir
+elif(pathToExeFromCurDir.startswith(".")):
+    PATH = current_directory + pathToExeFromCurDir[1:]
+else:
+    PATH = current_directory + "/" + pathToExeFromCurDir
+PATH = PATH.rsplit("/",1)[0] + "/"
 
 logging.basicConfig(
     filename= PATH+'application.log',
