@@ -9,3 +9,6 @@ node_modules/
 
 #User dependent files
 *.cnf
+
+#Database data files
+*.csv

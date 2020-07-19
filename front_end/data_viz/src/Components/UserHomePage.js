@@ -20,7 +20,12 @@ import {
 } from "@ant-design/icons";
 import "./css/UserHomePage.css";
 import io from "socket.io-client";
+// import { queryBuilder } from './../UserDefinedModules/mysqlJsonQueryBuilder/index'
+import TabularData from "./TabularData";
 import DatabaseSettings from "./DatabaseSettings";
+import Visualization1 from "./Visualization1";
+const queryBuilder = require("mysqljsonquery");
+// import UploadTest from "./UploadTest";
 
 const { RangePicker } = DatePicker;
 const { Content, Footer, Sider } = Layout;
@@ -34,30 +39,39 @@ class UserHomePageNew extends Component {
       collapsed: true,
       currentPage: "4",
       currentStock: "BHEL",
-      allStocks: ["BHEL", "TATA"],
+      availableStocks: ["BHEL", "TATA"],
+      databaseInfo: {
+        databaseName: "stocks",
+        tableName: "stocks",
+      },
       // defaultSelectedKeys: "2",
     };
-    const socket = io("http://localhost:5000");
+    const socket = io("http://192.168.31.50:5000");
+    let { databaseInfo } = this.state;
+
+    let query = new queryBuilder.queyBuilder();
+    query.setDatabase(databaseInfo.databaseName);
+    query.setTableName(databaseInfo.tableName);
+    query.setRequestType("select");
+    query.setFields(["symbol"]);
+    query.setComment("N");
 
     socket.on("connect", () => {
       console.log("Working connection", socket.id);
-      socket.emit(
-        "query",
-        '{"HEADER":{"DATABASE":"test_stocks","TABLE_NAME":"stocks","REQUEST_TYPE":"select"},"DATA":{"FIELDS":["symbol"],"SET":null,"WHERE":null},"FOOTER":{"DATA ABOUT THE REQUEST":"N","COMMENT":"N","DEP":null,"UPDATE":null}}'
-      );
+      socket.emit("query", query.buildQuery());
     });
 
     socket.on("result", (result) => {
-      console.log("stocks:",result);
-      let jsonResult = JSON.parse(result)
+      console.log("stocks:", result);
+      let jsonResult = JSON.parse(result);
       socket.disconnect();
-      var allStocks = [];
+      var availableStocks = [];
       var element;
-      for(element in jsonResult){
+      for (element in jsonResult) {
         // console.log(jsonResult[element].symbol)
-        allStocks.push(jsonResult[element].symbol)
+        availableStocks.push(jsonResult[element].symbol);
       }
-      this.setState({ allStocks })
+      this.setState({ availableStocks });
     });
   }
 
@@ -86,7 +100,9 @@ class UserHomePageNew extends Component {
   };
 
   makeOptions = () =>
-    this.state.allStocks.map((stock) => <Option value={stock}>{stock}</Option>);
+    this.state.availableStocks.map((stock) => (
+      <Option value={stock}>{stock}</Option>
+    ));
 
   render() {
     let stockDropDown = (
@@ -214,9 +230,17 @@ class UserHomePageNew extends Component {
                       </div>
                     );
                   case "2":
-                    return pageDescriptionHeader;
+                    return (
+                      <TabularData
+                        availableStocks={this.state.availableStocks}
+                      />
+                    );
                   case "3_1":
-                    return pageDescriptionHeader;
+                    return (
+                      <Visualization1
+                        availableStocks={this.state.availableStocks}
+                      />
+                    );
                   case "3_2":
                     return pageDescriptionHeader;
                   case "3_3":

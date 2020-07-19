@@ -1,0 +1,16 @@
+{
+  "name": "mysqljsonquery",
+  "version": "1.0.0",
+  "description": "MySQL Json query builder for the MySQL server.",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "keywords": [
+    "MySQL",
+    "querybuilder",
+    "json"
+  ],
+  "author": "Tarun Gopalkrishna A",
+  "license": "ISC"
+}

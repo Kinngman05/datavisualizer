@@ -4,6 +4,9 @@ import json
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO
 from flask_socketio import send, emit
+from flask_cors import CORS, cross_origin
+from flask import flash, request, redirect, url_for
+from werkzeug.utils import secure_filename
 
 import os
 import sys
@@ -27,13 +30,17 @@ logging.basicConfig(
     level=logging.DEBUG
 )
 
+UPLOAD_FOLDER = PATH.rsplit("/", 3)[0] + "/file_dumps/"
+ALLOWED_EXTENSIONS = {'csv'}
 
 #
 # New untested code added here
 #
 
 app = Flask(__name__)
+cors = CORS(app)
 app.config['SECRET_KEY'] = 'secret!'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 print("Connecting to the database")
@@ -53,7 +60,8 @@ def handle_my_custom_event():
 
 @socketio.on('query')
 def process_query(query):
-    logging.debug('received query: ' + str(query) + "query type:" + str(type(query)))
+    logging.debug('received query: ' + str(query) +
+                  "query type:" + str(type(query)))
     process.input(query, 0)
     result = process.processRequest()
     if(result):
@@ -73,10 +81,12 @@ def validate_user(credentials):
     else:
         emit('response', str(json.dumps({"result": False})))
 
+
 @socketio.on('message')
 def handle_message(message):
     logging.info(f"Message from {request.remote_addr}:{message}")
     print(f"Message from {request.remote_addr}:{message}")
+
 
 @socketio.on('settings')
 def database_settings(data):
@@ -106,7 +116,47 @@ def handle_disconnect():
     print(f"{request.remote_addr} disconnected.")
 
 
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+#
+# Write logging functions for this
+#
+
+
+@app.route('/upload', methods=['GET', 'POST'])  # Probably need to remove GET
+@cross_origin()
+def upload_file():
+    logging.info(f"Upload request from {request.remote_addr}")
+    if request.method == 'POST':
+        # check if the post request has the file part
+        # print(request.files)
+        if 'file' not in request.files:
+            logging.warning("file not in request.files")
+            # flash('No file part')
+            return json.dumps({"status": False, "error": "Error in upload to server!"})
+            # return redirect(request.url)
+        file = request.files['file']
+        # if user does not select file, browser also
+        # submit an empty part without filename
+        if file.filename == '':
+            logging.warning('Invalid file name!')
+            # flash('No selected file')
+            return json.dumps({"status": False, "error": "Invalid file name!"})
+            # return redirect(request.url)
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            logging.info(
+                f"Saving file {filename} at {app.config['UPLOAD_FOLDER']}")
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            # return redirect(url_for('uploaded_file',filename=filename))
+            return json.dumps({"status": True, "message": f"{file.filename}"})
+        else:
+            return json.dumps({"status": False, "error": f"{file.filename}:Invalid file Extension!"})
+
+
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, host='0.0.0.0', debug=True)
 else:
     exit(0)

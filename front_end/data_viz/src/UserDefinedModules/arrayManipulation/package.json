@@ -1,0 +1,14 @@
+{
+  "name": "arraymanipulation",
+  "version": "1.0.0",
+  "description": "Manipulate Arrays",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "keywords": [
+    "Array"
+  ],
+  "author": "",
+  "license": "ISC"
+}
