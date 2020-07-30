@@ -1,6 +1,6 @@
 export class EasyArray {
   constructor(arr) {
-    if (arr == undefined) {
+    if (arr === undefined) {
       //   this.array = null;
       //   this.shape = null;
       //   this.header = null;
@@ -29,23 +29,21 @@ export class EasyArray {
     console.log("array", this.array);
     console.log("shape", this.shape);
     console.log("dimension", this.dimension);
-    //   console.log();
-    //   console.log();
-    //   console.log();
   }
 
   arrangeData(headerList) {
-    if (this.dimension == 2) {
+    if (this.dimension === 2) {
       if (Array.isArray(headerList)) {
         var arrayIndices = [];
         for (let header of headerList) {
           for (let index in this.header) {
-            if (header == this.header[index]) {
+            if (header === this.header[index]) {
               arrayIndices.push(index);
               break;
             }
           }
         }
+        console.log("arrayIndices", arrayIndices);
         var result = [];
         for (let row of this.array) {
           var newRow = [];
@@ -54,6 +52,7 @@ export class EasyArray {
           }
           result.push(newRow);
         }
+        console.log("result", result);
         return result;
       }
     }
@@ -70,24 +69,24 @@ export class EasyArray {
     }
   }
   append(rows) {
-    if (this.dimension == 1) {
+    if (this.dimension === 1) {
       if (Array.isArray(rows)) {
         this.array.push(...rows);
-      } else if (typeof rows == "number") {
+      } else if (typeof rows === "number") {
         this.array.push(rows);
       }
-    } else if (this.dimension == 2) {
+    } else if (this.dimension === 2) {
       if (Array.isArray(rows)) {
         //Remember to check the shape
         if (Array.isArray(rows[0])) {
-          for (var blah of rows) if (blah.length != this.shape[1]) return;
+          for (var blah of rows) if (blah.length !== this.shape[1]) return;
           this.array.push(...rows);
           this.data.push(...rows);
-          this.shape[0] = this.shape[0] + rows.length
+          this.shape[0] = this.shape[0] + rows.length;
         } else {
-          if (rows.length == this.shape[1]) {
-          this.shape[0] = this.shape[0] + 1
-          this.array.push(rows);
+          if (rows.length === this.shape[1]) {
+            this.shape[0] = this.shape[0] + 1;
+            this.array.push(rows);
             this.data.push(rows);
           }
         }

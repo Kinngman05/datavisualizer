@@ -1,59 +1,94 @@
 {
-    "databases": {
+  "databases": {
+    "stocks": {
+      "tables": {
         "stocks": {
-            "tables": {
-                "stocks": {
-                    "table_constrains": {
-                        "symbol": "VARCHAR(10) NOT NULL"
-                    },
-                    "read_list": null,
-                    "index_constrains": null,
-                    "primary_key": "symbol",
-                    "foreign_key": null,
-                    "initial_data": [{
-                        "symbol" : "BHEL"
-                    }]
-                },
-                "raw_data": {
-                    "table_constrains": {
-                        "symbol":"VARCHAR(10) NOT NULL",
-                        "series":"CHAR(2) NOT NULL",
-                        "date": "DATE NOT NULL",
-                        "prev_close": "DECIMAL(12,2) NOT NULL",
-                        "open": "DECIMAL(12,2) NOT NULL",
-                        "high": "DECIMAL(12,2) NOT NULL",
-                        "low": "DECIMAL(12,2) NOT NULL",
-                        "last_price": "DECIMAL(12,2) NOT NULL",
-                        "close": "DECIMAL(12,2) NOT NULL",
-                        "VWAP": "DECIMAL(12,2) NOT NULL",
-                        "total_traded_qty": "INT NOT NULL",
-                        "turnover": "DECIMAL(12,2) DEFAULT NULL",
-                        "no_of_trades": "INT DEFAULT NULL",
-                        "deliverable_quantity": "INT DEFAULT NULL",
-                        "percent_calc": "DECIMAL(6,2) DEFAULT NULL"
-                    },
-                    "read_list": null,
-                    "index_constrains": null,
-                    "primary_key": null,
-                    "foreign_key": [
-                        {
-                            "constraint_name": null,
-                            "foreign_table_name": "stocks",
-                            "child_attribute": [
-                                "symbol"
-                            ],
-                            "parent_attribute": [
-                                "symbol"
-                            ]
-                        }
-                    ],
-                    "initial_data": null
-                }
+          "table_constrains": {
+            "symbol": "VARCHAR(10) NOT NULL"
+          },
+          "read_list": null,
+          "index_constrains": null,
+          "primary_key": ["symbol"],
+          "foreign_key": null,
+          "initial_data": [
+            {
+              "symbol": "BHEL"
             }
+          ]
+        },
+        "raw_data": {
+          "table_constrains": {
+            "symbol": "VARCHAR(10) NOT NULL",
+            "series": "CHAR(2) NOT NULL",
+            "date": "DATE NOT NULL",
+            "prev_close": "DECIMAL(12,2) NOT NULL",
+            "open": "DECIMAL(12,2) NOT NULL",
+            "high": "DECIMAL(12,2) NOT NULL",
+            "low": "DECIMAL(12,2) NOT NULL",
+            "last_price": "DECIMAL(12,2) NOT NULL",
+            "close": "DECIMAL(12,2) NOT NULL",
+            "vwap": "DECIMAL(12,2) NOT NULL",
+            "total_traded_qty": "INT NOT NULL",
+            "turnover": "DECIMAL(15,2) DEFAULT NULL",
+            "no_of_trades": "INT DEFAULT NULL",
+            "deliverable_quantity": "INT DEFAULT NULL",
+            "percent_calc": "DECIMAL(6,2) DEFAULT NULL"
+          },
+          "read_list": null,
+          "index_constrains": null,
+          "primary_key": ["symbol", "date"],
+          "foreign_key": [
+            {
+              "constraint_name": null,
+              "foreign_table_name": "stocks",
+              "child_attribute": ["symbol"],
+              "parent_attribute": ["symbol"]
+            }
+          ],
+          "initial_data": null
+        },
+        "analysis": {
+          "table_constrains": {
+            "symbol": "VARCHAR(10) NOT NULL",
+            "date": "DATE NOT NULL",
+            "vwap_2": "DECIMAL(12,2) DEFAULT NULL",
+            "vwap_3": "DECIMAL(12,2) DEFAULT NULL",
+            "vwap_5": "DECIMAL(12,2) DEFAULT NULL",
+            "vwap_21": "DECIMAL(12,2) DEFAULT NULL"
+          },
+          "read_list": null,
+          "index_constrains": null,
+          "primary_key": ["symbol", "date"],
+          "foreign_key": [
+            {
+              "constraint_name": null,
+              "foreign_table_name": "raw_data",
+              "child_attribute": ["symbol", "date"],
+              "parent_attribute": ["symbol", "date"]
+            }
+          ],
+          "initial_data": null
         }
-    },
-    "procedures": null,
-    "triggers": null,
-    "initial_data": null,
-    "views": null
+      }
+    }
+  },
+  "procedures": null,
+  "triggers": [
+    {
+      "trigger_name": "raw_data_AFTER_INSERT",
+      "trigger_time": "AFTER INSERT",
+      "database_name": "stocks",
+      "table_name": "raw_data",
+      "queries": [
+        "INSERT INTO analysis(`date`,`symbol`) VALUES(NEW.`date`,NEW.`symbol`);"
+      ]
+    }
+  ],
+  "initial_data": null,
+  "views": [
+    {
+      "name": "information",
+      "query": "SELECT raw_data.`date`,raw_data.symbol,prev_close,open,high,low,last_price,close,vwap,total_traded_qty,turnover,no_of_trades,deliverable_quantity,percent_calc,vwap_2,vwap_3,vwap_5,vwap_21 FROM raw_data,analysis WHERE raw_data.`date` = analysis.`date` AND raw_data.`symbol` = analysis.`symbol`;"
+    }
+  ]
 }

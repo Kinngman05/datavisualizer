@@ -7,8 +7,15 @@ __pycache__/
 #Node
 node_modules/
 
-#User dependent files
+#Config files
 *.cnf
+.config/
 
 #Database data files
 *.csv
+
+#Ideas for the app
+todo_ideas.txt
+
+#Tests
+tests/

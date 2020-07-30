@@ -1,1 +1,0 @@
-Use of persistent conenctions to a praticular table for constant data insertion

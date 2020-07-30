@@ -6,4 +6,4 @@ type mysql >/dev/null 2>&1 && echo "MySQL is installed." || echo "Please install
 
 
 # pip packages
-pip3 install Flask-SocketIO mysql-connector-python flask-cors
+pip3 install Flask-SocketIO mysql-connector-python flask-cors pandas

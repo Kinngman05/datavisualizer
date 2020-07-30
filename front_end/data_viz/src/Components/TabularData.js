@@ -18,21 +18,20 @@ class TabularData extends Component {
     super(props);
     // console.log("XX-->>",props.availableStocks)
     this.state = {
-      availableStocks: props.availableStocks,
+      availableStocks: ["BHEL", "HDFCBANK", "HCLTECH", "MPHASIS"],
       databaseInfo: {
         databaseName: "stocks",
-        tableName: "raw_data",
+        tableName: "information",
       },
     };
   }
 
   onChange = (stockName) => {
-    console.log("XX-->", stockName);
     this.setState({ stockName });
-    const socket = io("http://192.168.31.50:5000");
     let { databaseInfo } = this.state;
 
     let query = new queryBuilder.queyBuilder();
+    const socket = io(query.getUrl());
     query.setDatabase(databaseInfo.databaseName);
     query.setTableName(databaseInfo.tableName);
     query.setRequestType("select");
@@ -62,10 +61,10 @@ class TabularData extends Component {
           key: column,
           // fixed: "left",
         });
-        // console.log(column)
+        // console.log(column);
       }
       this.setState({ columnHeader });
-      this.setState({ tableData });
+      this.setState({ tableData }); // antd recomemnds putting a 'key' in this object list for each element
     });
   };
 
@@ -114,7 +113,7 @@ class TabularData extends Component {
               <RangePicker size="small" />
             </Descriptions.Item>
             <Descriptions.Item label="Association">
-              <a>421421</a>
+              <p>421421</p>
             </Descriptions.Item>
             <Descriptions.Item label="Creation Time">
               2017-01-10
@@ -127,82 +126,6 @@ class TabularData extends Component {
         </PageHeader>
       </div>
     );
-    const columns = [
-      {
-        title: "Full Name",
-        width: 100,
-        dataIndex: "name",
-        key: "name",
-        fixed: "left",
-      },
-      {
-        title: "Age",
-        width: 100,
-        dataIndex: "age",
-        key: "age",
-        fixed: "left",
-      },
-      {
-        title: "Column 1",
-        dataIndex: "address",
-        key: "1",
-        width: 150,
-      },
-      {
-        title: "Column 2",
-        dataIndex: "address",
-        key: "2",
-        width: 150,
-      },
-      {
-        title: "Column 3",
-        dataIndex: "address",
-        key: "3",
-        width: 150,
-      },
-      {
-        title: "Column 4",
-        dataIndex: "address",
-        key: "4",
-        width: 150,
-      },
-      {
-        title: "Column 5",
-        dataIndex: "address",
-        key: "5",
-        width: 150,
-      },
-      {
-        title: "Column 6",
-        dataIndex: "address",
-        key: "6",
-        width: 150,
-      },
-      {
-        title: "Column 7",
-        dataIndex: "address",
-        key: "7",
-        width: 150,
-      },
-      { title: "Column 8", dataIndex: "address", key: "8" },
-      {
-        title: "Action",
-        key: "operation",
-        fixed: "right",
-        width: 100,
-        render: () => <a>action</a>,
-      },
-    ];
-
-    const data = [];
-    for (let i = 0; i < 100; i++) {
-      data.push({
-        key: i,
-        name: `Edrward ${i}`,
-        age: 32,
-        address: `London Park no. ${i}`,
-      });
-    }
     return (
       <div>
         {pageDescriptionHeader}

@@ -11,6 +11,13 @@ export class queyBuilder {
     this.comment = null;
     this.update = null;
   }
+  addField() {}
+
+  removeField() {}
+
+  getUrl(){
+    return "http://192.168.31.50:5000"
+  }
 
   setDatabase(databaseName) {
     this.database = databaseName;
@@ -28,8 +35,6 @@ export class queyBuilder {
       console.log("ERROR: fields is an Array!");
     }
   }
-  addField() {}
-  removeField() {}
   setSet(setValue) {
     this.set = setValue;
   }
@@ -62,6 +67,7 @@ export class queyBuilder {
       console.log("ERROR: update is an Object with update request type!");
     }
   }
+
 
   buildQuery() {
     let database = { DATABASE: this.database };

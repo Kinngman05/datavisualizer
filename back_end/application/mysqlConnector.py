@@ -144,10 +144,34 @@ class mysqlConnector():
                     raise errors.UnknownDatabaseError()
                 else:
                     errors.NonCriticalError("MYSQL ERROR:{},{}".format(err,err.errno))
+            except mysql.connector.Error as err:
+                    errors.NonCriticalError("MYSQL CONNECTOR ERROR:{}".format(str(err)))
             except Exception as e:
                 errors.UserDefinedError("Error not handeled!:{}:{}".format(str(e.__class__),str(e)))
         else:
             logging.debug("executeQuery called with no arguments")
+
+    def show(self):
+        self.executeQuery("SHOW DATABASES")
+        response = self.cursor.fetchall()
+        logging.debug(f"The show databases are {response}")
+        databases = []
+        for database in response:
+            if(database['Database'] == 'information_schema'):
+                continue
+            databases.append(database['Database'])
+        result = {}
+        logging.debug(f"The databases are {databases}")
+        for database in databases:
+            tables = []
+            self.use(database)
+            self.executeQuery("SHOW TABLES")
+            response = self.cursor.fetchall()
+            for element in response:
+                for table_name in element:
+                    tables.append(element[table_name])
+            result.update({ database : tables })
+        return result
 
     def create(self, what, nameOfWhat, dictionary=None, primaryKey=None, foreignKeys=None, indexAttributes=None):
         """
@@ -158,7 +182,7 @@ class mysqlConnector():
         what                        str
         nameOfWhat                  str
         dictionary                  dict
-        primaryKey                  str or None
+        primaryKey                  list or None
         foreignKeys                 list or None
         index                       list or None
 
@@ -176,7 +200,7 @@ class mysqlConnector():
         }
 
         `primarykey` is the name of the primary key
-        Example: "id"
+        Example: ["id","id2"]
 
         `foreignKeys` is a list of dicts of the following format:
         [
@@ -223,7 +247,13 @@ class mysqlConnector():
                 finalQuery = (finalQuery + ",`" +
                               key[index + 1] + "` " + value[index + 1])
             if(primaryKey):
-                finalQuery = finalQuery + ",PRIMARY KEY(`" + primaryKey + "`)"
+                finalQuery = finalQuery + ",PRIMARY KEY("
+                for index, element in enumerate(primaryKey):
+                    if(index == 0):
+                        finalQuery = finalQuery + "`" + element + "`"
+                        continue
+                    finalQuery = finalQuery + "," + "`" + element + "`"
+                finalQuery = finalQuery + ")"
             if(foreignKeys):
                 for number, eachKey in enumerate(foreignKeys):
                     constraintName = eachKey['constraint_name']
@@ -266,6 +296,18 @@ class mysqlConnector():
             logging.warning(
                 "THIS FUNCTION CAN ONLY CREATE ONLY 'TABLE' AND 'DATABASE'")
         self.executeQuery(finalQuery)
+
+    def describe(self, table_name):
+        """
+        Generates a DESCRIBE query.
+        """
+        logging.info("Creating DESCRIBE query({})".format(table_name))
+        finalQuery = "DESCRIBE {};".format("".join(self._add_back_ticks([table_name])))
+        self.executeQuery(finalQuery)
+        response = self.cursor.fetchall()
+        logging.debug("The response from DESCRIBE is:"+str(response))
+        return response
+
 
     def use(self, databaseName):
         """
@@ -337,7 +379,11 @@ class mysqlConnector():
         key = list(setDict.keys())
         value = list(setDict.values())
         length = len(key)
-        finalQuery = finalQuery + key[0] + "=" + "'" + value[0] + "'"
+        try:
+            finalQuery = finalQuery + key[0] + "=" + "'" + value[0] + "'"
+        except TypeError:
+            if(value[0]):
+                finalQuery = finalQuery + key[0] + "=" + "'" + str(value[0]) + "'"
         for index in range(length - 1):
             finalQuery = finalQuery + "," + \
                 key[index + 1] + "=" + "'" + value[index + 1] + "'"

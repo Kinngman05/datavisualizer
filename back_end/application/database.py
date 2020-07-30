@@ -88,7 +88,8 @@ class main:
         WRITE THE CODE HERE TO GET THE COMMENT FROM THE FOOTER SECTION
         '''
         try:
-            self.mysqlConnection.use(self.database) #This can raise unknown database error -- Needs to be caught correctly
+            if(not(self.requestType == "show")):
+                self.mysqlConnection.use(self.database) #This can raise unknown database error -- Needs to be caught correctly
         except Exception:           #Not sure if this is correct
             logging.debug("Failed to connect to the database, this is when you are using non-persistent connections")
 
@@ -160,14 +161,17 @@ class main:
             NOTE: THAT WHEN A SELECT IS USED IT RETURNS DATA AND CANNOT BE USED TO UPDATE ANOTHER TABLE.
             I NEED TO RESTRUCTURE IT TO BE ABLE TO RETURN AS WELL AS RUN AN UPDATE.
             '''
+            logging.debug(f"The request type is {self.requestType}")
             if(self.requestType == "insert"):
                 self.mysqlConnection.insert(self.getTable(), self.fields)
+            elif(self.requestType == "describe"):
+                return self.mysqlConnection.describe(self.getTable())
+            elif(self.requestType == "show"):
+                return self.mysqlConnection.show()
             elif(self.requestType == "delete"):
-                self.mysqlConnection.delete(
-                    self.getTable(), self.whereClause)
+                self.mysqlConnection.delete(self.getTable(), self.whereClause)
             elif(self.requestType == "update"):
-                self.mysqlConnection.update(
-                    self.getTable(), self.setClause, self.whereClause)
+                self.mysqlConnection.update(self.getTable(), self.setClause, self.whereClause)
             elif(self.requestType == "select"):
                 try:
                     return self.mysqlConnection.select([self.getTable()], self.fields, self.whereClause)

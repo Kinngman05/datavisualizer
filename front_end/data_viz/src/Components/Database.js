@@ -10,21 +10,17 @@ import {
   Divider,
   message,
   Tabs,
-  Upload,
 } from "antd";
 import "./css/DatabaseSettings.css";
 import UploadData from "./UploadData";
-import {
-  MinusCircleOutlined,
-  PlusOutlined,
-  UploadOutlined,
-} from "@ant-design/icons";
+import Analysis from "./Analysis";
+import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import io from "socket.io-client";
 
 const { Option } = Select;
 const { TabPane } = Tabs;
 
-class DatabaseSettings extends Component {
+class Database extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -48,7 +44,7 @@ class DatabaseSettings extends Component {
     });
 
     socket.on("result", (result) => {
-      console.log(result);
+      // console.log(result);
       // query = this.converte
       // this.setState({ queries: [...this.state.queries, query] });
       socket.disconnect();
@@ -56,14 +52,14 @@ class DatabaseSettings extends Component {
   }
 
   onFinish = (query) => {
-    console.log("Finished", query);
-    console.log("a", this.state.queries);
+    // console.log("Finished", query);
+    // console.log("a", this.state.queries);
     if (query.database_name === undefined) {
-      message.error("No database seelected, please create/choose one!");
+      message.error("No database selected, please create/choose one!");
     } else {
       this.setState({ queries: [...this.state.queries, query] });
     }
-    console.log("b", this.state.queries);
+    // console.log("b", this.state.queries);
   };
 
   buildBackendQuery = () => {
@@ -87,8 +83,8 @@ class DatabaseSettings extends Component {
     );
     let after = "}}}}";
     let backendQuery = before + something + after;
-    console.log("blah", something);
-    console.log("blah", backendQuery);
+    // console.log("blah", something);
+    // console.log("blah", backendQuery);
     this.setState({ backendQuery });
     //   '{"HEADER":{"DATABASE":"+''+","TABLE_NAME":"+''+","REQUEST_TYPE":"create"},
     //   "DATA":{"FIELDS":["*"],"SET":null,"WHERE":null},
@@ -97,7 +93,7 @@ class DatabaseSettings extends Component {
   };
 
   finishAction = () => {
-    console.log("X", this.state.queries);
+    // console.log("X", this.state.queries);
     this.buildBackendQuery();
 
     const socket = io("http://localhost:5000");
@@ -107,7 +103,7 @@ class DatabaseSettings extends Component {
     });
 
     socket.on("result", (result) => {
-      console.log(result);
+      // console.log(result);
       socket.disconnect();
     });
   };
@@ -125,7 +121,7 @@ class DatabaseSettings extends Component {
   };
 
   addItem = () => {
-    console.log("addItem");
+    // console.log("addItem");
     const { items, name } = this.state;
     this.setState({
       items: [...items, name],
@@ -134,28 +130,12 @@ class DatabaseSettings extends Component {
     this.setState({ ifDisabled: true });
   };
   callback = (key) => {
-    console.log(key);
+    // console.log(key);
   };
 
   render() {
     const { items, name } = this.state;
-    const props1 = {
-      name: "file",
-      action: "http://localhost:5000/upload",
-      headers: {
-        authorization: "authorization-text",
-      },
-      onChange(info) {
-        if (info.file.status !== "uploading") {
-          console.log(info.file, info.fileList);
-        }
-        if (info.file.status === "done") {
-          message.success(`${info.file.name} file uploaded successfully`);
-        } else if (info.file.status === "error") {
-          message.error(`${info.file.name} file upload failed.`);
-        }
-      },
-    };
+
     return (
       <div>
         <PageHeader
@@ -239,7 +219,7 @@ class DatabaseSettings extends Component {
                           value={name}
                           onChange={this.onNameChange}
                         />
-                        <a
+                        <p
                           style={{
                             flex: "none",
                             padding: "8px",
@@ -250,7 +230,7 @@ class DatabaseSettings extends Component {
                           onClick={this.addItem}
                         >
                           <PlusOutlined /> Add database
-                        </a>
+                        </p>
                       </div>
                     </div>
                   )}
@@ -439,8 +419,11 @@ class DatabaseSettings extends Component {
           <TabPane tab="Upload Data" key="2">
             <UploadData />
           </TabPane>
-          <TabPane tab="Schema" key="3">
-            Content of Tab Pane 3
+          <TabPane tab="Analysis" key="3">
+            <Analysis />
+          </TabPane>
+          <TabPane tab="Schema" key="4">
+            Content of Tab Pane 4
           </TabPane>
         </Tabs>
       </div>
@@ -448,4 +431,4 @@ class DatabaseSettings extends Component {
   }
 }
 
-export default DatabaseSettings;
+export default Database;
