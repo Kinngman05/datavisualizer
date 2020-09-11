@@ -6,7 +6,7 @@ import {
   message,
   PageHeader,
   Descriptions,
-  DatePicker,
+  // DatePicker,
   Modal,
   Row,
   Col,
@@ -15,24 +15,23 @@ import {
 } from "antd";
 import io from "socket.io-client";
 import { AreaChartOutlined, PlusOutlined } from "@ant-design/icons";
-import "./../../css/GoogleChartElementNew.css";
+import "./../css/GoogleChartElement.css";
 const EasyArray = require("arraymanipulation");
 const queryBuilder = require("mysqljsonquery");
 const { Option } = Select;
-const { TextArea } = Input;
-const { RangePicker } = DatePicker;
+// const { TextArea } = Input;
+// const { RangePicker } = DatePicker;
 
-class GoogleChartElementNew extends Component {
+class GoogleChartElement extends Component {
   constructor(props) {
     super(props);
     this.state = {
       chartData: [],
+      bufferOrder: [],
       dataOrder: [],
       dataFields: [],
       chartType: null,
-      where: null,
       initDtypeSetup: false,
-      whereValue: "",
       chartOptions: {
         // chartType: "CandlestickChart",
         title: "Visualization",
@@ -47,14 +46,36 @@ class GoogleChartElementNew extends Component {
         height: "700px",
         crosshair: { trigger: "both" },
       },
-      visible: false,
+      dataTypeVisible: false,
+      chartOptionsVisible: false,
       databaseName: null,
       tableName: null,
       whereCondition: [],
       whereConditionAttribute: null,
       whereConditionCase: "=",
       whereConditionValue: null,
+      whereMergeCase: "AND",
+      mergeCaseDisables: false,
+      availableDatabases: [],
+      databaseTableMap: {},
+      currentTables: [],
     };
+    let query = new queryBuilder.queyBuilder();
+    const socket = io(query.getUrl());
+    query.setRequestType("show");
+
+    socket.on("connect", () => {
+      socket.emit("query", query.buildQuery());
+    });
+
+    socket.on("result", (result) => {
+      console.log("show", result);
+      let databaseTableMap = JSON.parse(result);
+      let availableDatabases = Object.keys(databaseTableMap);
+      console.log("availableDatabases", availableDatabases);
+      this.setState({ availableDatabases });
+      this.setState({ databaseTableMap });
+    });
   }
 
   justDoIt = (input) => {
@@ -129,26 +150,30 @@ class GoogleChartElementNew extends Component {
 
   setDatatypes = () => {
     this.setState({
-      visible: true,
+      dataTypeVisible: true,
     });
   };
 
-  handleOk = (e) => {
+  handleDataTypeOk = (e) => {
     console.log(e);
     this.setState({
-      visible: false,
+      dataTypeVisible: false,
     });
   };
 
-  handleCancel = (e) => {
+  handleDataTypeCancel = (e) => {
     console.log(e);
     this.setState({
-      visible: false,
+      dataTypeVisible: false,
     });
+  };
+
+  determineDataType = (input) => {
+    console.log("input", input);
   };
 
   getDataFromDatabase = () => {
-    let { databaseName, tableName, dataFields, where } = this.state;
+    let { databaseName, tableName, dataFields, whereCondition } = this.state;
 
     if (databaseName === null || tableName === null) {
       message.error("Please make sure you have selected database and table");
@@ -161,7 +186,9 @@ class GoogleChartElementNew extends Component {
     query.setTableName(tableName);
     query.setRequestType("select");
     query.setFields(["*"]);
-    if (where !== null) query.setWhere({ __QUERY__: where });
+    if (whereCondition.length > 0) {
+      query.setWhere({ __QUERY__: whereCondition.join(" ") });
+    }
 
     socket.on("connect", () => {
       socket.emit("query", query.buildQuery());
@@ -175,14 +202,17 @@ class GoogleChartElementNew extends Component {
       let row = chartData[0];
       let dataFieldsDataTypes = {};
       if (this.state.initDtypeSetup === false) {
+        dataFields = [];
         for (var column in row) {
           dataFields.push(column);
+          dataFieldsDataTypes[column] = this.determineDataType(row[column]);
           dataFieldsDataTypes[column] = "number"; //Make this a function to determine datatype
         }
         this.setState({ dataFields });
         this.setState({ dataFieldsDataTypes });
         this.setState({ initDtypeSetup: true });
       } else {
+        console.log("UNRELIABLE CODDE RUNNING PLEASE REVIEW IT");
         for (var column in row) {
           if (this.state.dataFields.includes(column)) {
             console.log("Yes", column, "in", this.state.dataFields);
@@ -202,12 +232,53 @@ class GoogleChartElementNew extends Component {
     });
   };
 
-  onChangeDatabase = (databaseName) => {
-    this.setState({ databaseName });
+  getTableDescription = () => {
+    let { databaseName, tableName } = this.state;
+
+    if (databaseName === null || tableName === null) {
+      message.error("Please make sure you have selected database and table");
+      return;
+    }
+    let query = new queryBuilder.queyBuilder();
+    const socket = io(query.getUrl());
+
+    query.setDatabase(databaseName);
+    query.setTableName(tableName);
+    query.setRequestType("describe");
+
+    socket.on("connect", () => {
+      socket.emit("query", query.buildQuery());
+    });
+
+    socket.on("result", (result) => {
+      // console.log(result);
+      message.success("Success!");
+      let descriptionData = JSON.parse(result);
+      socket.disconnect();
+      // console.log("descriptionData", descriptionData);
+      let dataFields = [];
+      for (var element in descriptionData) {
+        dataFields.push(descriptionData[element]["Field"]);
+      }
+      this.setState({ dataFields });
+    });
   };
 
-  onChangeTableName = (tableName) => {
-    this.setState({ tableName });
+  onChangeDatabase = async (databaseName) => {
+    await this.setState({ databaseName });
+    await this.setState({
+      currentTables: this.state.databaseTableMap[databaseName],
+    });
+    if (this.state.databaseName !== null && this.state.tableName !== null) {
+      this.getTableDescription();
+    }
+  };
+
+  onChangeTableName = async (tableName) => {
+    await this.setState({ tableName });
+    if (this.state.databaseName !== null && this.state.tableName !== null) {
+      this.getTableDescription();
+    }
   };
 
   handleChangeOfDatatype = (value) => {
@@ -223,19 +294,53 @@ class GoogleChartElementNew extends Component {
     }));
   };
 
-  setWhereCondition = async ({ target: { value } }) => {
-    await this.setState({ where: value });
-    await this.setState({ whereValue: value });
-  };
+  // setWhereCondition = async ({ target: { value } }) => {
+  //   await this.setState({ where: value });
+  //   await this.setState({ whereValue: value });
+  // };
 
   addWhereCondition = () => {
     let {
       whereConditionAttribute,
       whereConditionCase,
       whereConditionValue,
+      whereMergeCase,
     } = this.state;
-    let append =
-      whereConditionAttribute + whereConditionCase + whereConditionValue;
+    let append = "";
+    if (["is_not_null", "is_null"].includes(whereConditionCase)) {
+      // console.log("ROFL");
+      if (this.state.whereCondition.length === 0) {
+        append =
+          whereConditionAttribute +
+          " " +
+          whereConditionCase.split("_").join(" ").toUpperCase();
+      } else {
+        append =
+          whereMergeCase +
+          " " +
+          whereConditionAttribute +
+          " " +
+          whereConditionCase.split("_").join(" ").toUpperCase();
+      }
+    } else {
+      if (this.state.whereCondition.length === 0) {
+        append =
+          whereConditionAttribute +
+          " " +
+          whereConditionCase +
+          " " +
+          whereConditionValue;
+      } else {
+        append =
+          whereMergeCase +
+          " " +
+          whereConditionAttribute +
+          " " +
+          whereConditionCase +
+          " " +
+          whereConditionValue;
+      }
+    }
     this.setState({ whereCondition: [...this.state.whereCondition, append] });
   };
 
@@ -249,6 +354,34 @@ class GoogleChartElementNew extends Component {
 
   setWhereValue = ({ target: { value } }) => {
     this.setState({ whereConditionValue: value });
+  };
+
+  handleWhereConditionChange = (value) => {
+    // console.log(value);
+    // console.log("value", typeof value);
+    this.setState({ whereCondition: value });
+  };
+
+  setMergeCase = (value) => {
+    this.setState({ whereMergeCase: value });
+  };
+
+  openChartOptionsModal = () => {
+    this.setState({
+      chartOptionsVisible: true,
+    });
+  };
+
+  handleChartOptionsOk = (e) => {
+    this.setState({
+      chartOptionsVisible: false,
+    });
+  };
+
+  handleChartOptionsCancel = (e) => {
+    this.setState({
+      chartOptionsVisible: false,
+    });
   };
 
   render() {
@@ -286,6 +419,9 @@ class GoogleChartElementNew extends Component {
             <Button key="3" type="primary" onClick={this.setDatatypes}>
               Data Types
             </Button>,
+            <Button key="4" type="primary" onClick={this.openChartOptionsModal}>
+              Chart Options
+            </Button>,
           ]}
         >
           <Descriptions size="small" column={3}>
@@ -302,7 +438,9 @@ class GoogleChartElementNew extends Component {
                   0
                 }
               >
-                <Option value="stocks">stocks</Option>
+                {this.state.availableDatabases.map((database) => {
+                  return <Option value={database}>{database}</Option>;
+                })}
               </Select>
             </Descriptions.Item>
             <Descriptions.Item label="Table Name">
@@ -317,27 +455,33 @@ class GoogleChartElementNew extends Component {
                   0
                 }
               >
-                <Option value="information">information</Option>
+                {this.state.currentTables.map((table) => {
+                  return <Option value={table}>{table}</Option>;
+                })}
               </Select>
             </Descriptions.Item>
           </Descriptions>
-          <TextArea
-            value={this.state.whereValue}
-            onChange={this.setWhereCondition}
+          <Select
+            mode="multiple"
+            style={{ width: "100%" }}
             placeholder="Where condition"
-            autoSize={{ minRows: 1, maxRows: 1 }}
-          />
-          {this.state.whereCondition.length > 0 ? (
-            <Select
-              mode="multiple"
-              style={{ width: "100%" }}
-              placeholder="Where condition"
-              defaultValue={this.state.whereCondition}
-              // onChange={handleChange}
-            ></Select>
-          ) : null}
+            key={1000 + this.state.whereCondition.length}
+            defaultValue={this.state.whereCondition}
+            onChange={this.handleWhereConditionChange}
+          ></Select>
           <Row>
             <Col span={2}>WHERE:</Col>
+            <Col span={2}>
+              <Select
+                style={{ width: "100%" }}
+                defaultValue="AND"
+                onChange={this.setMergeCase}
+                disabled={this.state.mergeCaseDisables}
+              >
+                <Option value="AND">{"AND"}</Option>
+                <Option value="OR">{"OR"}</Option>
+              </Select>
+            </Col>
             <Col span={6}>
               <Select
                 style={{ width: "100%" }}
@@ -397,10 +541,8 @@ class GoogleChartElementNew extends Component {
       <div>
         {this.state.dataOrder.length > 0 && this.state.chartType != null ? (
           <Chart
-            // chartType={"LineChart"}
             options={this.state.chartOptions}
             chartType={this.state.chartType}
-            // options={{ legend: "none" }}
             data={this.state.newCoolChartData}
             loader={<div>Loading Chart</div>}
             rootProps={{ "data-testid": "1" }}
@@ -409,15 +551,14 @@ class GoogleChartElementNew extends Component {
           <Result
             icon={<AreaChartOutlined />}
             title="Please select the options to render the chart"
-            // extra={<Button type="primary">Next</Button>}
           />
         )}
-        {chartMenu}
+        {this.state.availableDatabases.length > 0 ? chartMenu : null}
         <Modal
           title="Select datatypes"
-          visible={this.state.visible}
-          onOk={this.handleOk}
-          onCancel={this.handleCancel}
+          visible={this.state.dataTypeVisible}
+          onOk={this.handleDataTypeOk}
+          onCancel={this.handleDataTypeCancel}
           centered
         >
           {this.state.dataFields.length > 0 ? (
@@ -444,9 +585,18 @@ class GoogleChartElementNew extends Component {
             <p>No data</p>
           )}
         </Modal>
+        <Modal
+          title="Chart Options"
+          visible={this.state.chartOptionsVisible}
+          onOk={this.handleChartOptionsOk}
+          onCancel={this.handleChartOptionsCancel}
+          centered
+        >
+          <div>OLA AMIGOS</div>
+        </Modal>
       </div>
     );
   }
 }
 
-export default GoogleChartElementNew;
+export default GoogleChartElement;

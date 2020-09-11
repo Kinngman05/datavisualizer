@@ -1,16 +1,8 @@
 import React, { Component } from "react";
-import {
-  PageHeader,
-  Button,
-  Descriptions,
-  DatePicker,
-  Select,
-  Table,
-} from "antd";
+import { PageHeader, Button, Descriptions, Select, Table, message } from "antd";
 import io from "socket.io-client";
 const queryBuilder = require("mysqljsonquery");
 
-const { RangePicker } = DatePicker;
 const { Option } = Select;
 
 class TabularData extends Component {
@@ -18,30 +10,49 @@ class TabularData extends Component {
     super(props);
     // console.log("XX-->>",props.availableStocks)
     this.state = {
-      availableStocks: ["BHEL", "HDFCBANK", "HCLTECH", "MPHASIS"],
-      databaseInfo: {
-        databaseName: "stocks",
-        tableName: "information",
-      },
+      availableDatabases: [],
+      databaseTableMap: {},
+      currentTables: [],
+      tableData: [],
+      databaseName: null,
+      tableName: null,
     };
-  }
-
-  onChange = (stockName) => {
-    this.setState({ stockName });
-    let { databaseInfo } = this.state;
-
     let query = new queryBuilder.queyBuilder();
     const socket = io(query.getUrl());
-    query.setDatabase(databaseInfo.databaseName);
-    query.setTableName(databaseInfo.tableName);
+    query.setRequestType("show");
+
+    socket.on("connect", () => {
+      socket.emit("query", query.buildQuery());
+    });
+
+    socket.on("result", (result) => {
+      console.log("show", result);
+      let databaseTableMap = JSON.parse(result);
+      let availableDatabases = Object.keys(databaseTableMap);
+      console.log("availableDatabases->", availableDatabases);
+      this.setState({ availableDatabases });
+      this.setState({ databaseTableMap });
+    });
+  }
+
+  getDataFromDatabase = () => {
+    let { databaseName, tableName } = this.state;
+
+    if (databaseName === null || tableName === null) {
+      message.error("Please make sure you have selected database and table");
+      return;
+    }
+    console.log("WOKRING detdatafromdatabase");
+    let query = new queryBuilder.queyBuilder();
+    const socket = io(query.getUrl());
+
+    query.setDatabase(databaseName);
+    query.setTableName(tableName);
     query.setRequestType("select");
     query.setFields(["*"]);
-    query.setWhere({ symbol: stockName });
-    query.setComment("N");
+
     socket.on("connect", () => {
-      // let { databaseInfo, stockName } = this.state;
-      // console.log("Working connection", socket.id);
-      console.log("The query is:", query.buildQuery());
+      message.info("Loading data")
       socket.emit("query", query.buildQuery());
     });
 
@@ -68,60 +79,76 @@ class TabularData extends Component {
     });
   };
 
-  makeOptions = () =>
-    this.state.availableStocks.map((stock) => (
-      <Option value={stock}>{stock}</Option>
-    ));
+  onChangeDatabase = async (databaseName) => {
+    await this.setState({ databaseName });
+    await this.setState({
+      currentTables: this.state.databaseTableMap[databaseName],
+    });
+    if (this.state.databaseName !== null && this.state.tableName !== null) {
+      this.getDataFromDatabase();
+    }
+  };
+
+  onChangeTableName = async (tableName) => {
+    await this.setState({ tableName });
+    if (this.state.databaseName !== null && this.state.tableName !== null) {
+      this.getDataFromDatabase();
+    }
+  };
 
   render() {
-    let stockDropDown = (
-      <Select
-        showSearch
-        style={{ width: 100 }}
-        placeholder="Stock"
-        optionFilterProp="children"
-        onChange={this.onChange}
-        // onFocus={this.onFocus}
-        // onBlur={this.onBlur}
-        // onSearch={this.onSearch}
-        filterOption={(input, option) =>
-          option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-        }
-      >
-        {this.makeOptions()}
-      </Select>
-    );
     let pageDescriptionHeader = (
       <div className="site-page-header-ghost-wrapper">
         <PageHeader
           ghost={false}
           // onBack={() => window.history.back()}
-          title={stockDropDown}
+          // title={stockDropDown}
           // subTitle="This is a subtitle"
           extra={[
             <Button key="1" type="primary">
               Refresh
             </Button>,
+            <Button key="2" type="primary" onClick={this.getDataFromDatabase}>
+              Reload Data
+            </Button>,
           ]}
         >
           <Descriptions size="small" column={3}>
             {/* <Descriptions.Item label="Created">Lili Qu</Descriptions.Item> */}
-            <Descriptions.Item label="Date">
-              2020/01/10 - 2020/05/01
+            <Descriptions.Item label="Database Name">
+              <Select
+                showSearch
+                style={{ width: 200 }}
+                placeholder="Select Chart Type"
+                optionFilterProp="children"
+                onChange={this.onChangeDatabase}
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().indexOf(input.toLowerCase()) >=
+                  0
+                }
+              >
+                {this.state.availableDatabases.map((database) => {
+                  return <Option value={database}>{database}</Option>;
+                })}
+              </Select>
             </Descriptions.Item>
-            <Descriptions.Item label="Range">
-              <RangePicker size="small" />
+            <Descriptions.Item label="Table Name">
+              <Select
+                showSearch
+                style={{ width: 200 }}
+                placeholder="Select Chart Type"
+                optionFilterProp="children"
+                onChange={this.onChangeTableName}
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().indexOf(input.toLowerCase()) >=
+                  0
+                }
+              >
+                {this.state.currentTables.map((table) => {
+                  return <Option value={table}>{table}</Option>;
+                })}
+              </Select>
             </Descriptions.Item>
-            <Descriptions.Item label="Association">
-              <p>421421</p>
-            </Descriptions.Item>
-            <Descriptions.Item label="Creation Time">
-              2017-01-10
-            </Descriptions.Item>
-            <Descriptions.Item label="Effective Time">
-              2017-10-10
-            </Descriptions.Item>
-            <Descriptions.Item label="Remarks">HELLO?</Descriptions.Item>
           </Descriptions>
         </PageHeader>
       </div>

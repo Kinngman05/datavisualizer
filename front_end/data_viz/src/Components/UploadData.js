@@ -9,6 +9,7 @@ import {
   Input,
   Select,
   Divider,
+  Space,
 } from "antd";
 import io from "socket.io-client";
 import { UploadOutlined } from "@ant-design/icons";
@@ -32,6 +33,7 @@ class UploadData extends Component {
       availableDatabases: [],
       databaseTableMap: {},
       tableDescription: [],
+      mapper: {},
     };
     let query = new queryBuilder.queyBuilder();
     const socket = io(query.getUrl());
@@ -44,8 +46,9 @@ class UploadData extends Component {
     socket.on("result", (result) => {
       console.log("show", result);
       let databaseTableMap = JSON.parse(result);
+      socket.disconnect();
       let availableDatabases = Object.keys(databaseTableMap);
-      console.log("availableDatabases", availableDatabases);
+      // console.log("availableDatabases", availableDatabases);
       this.setState({ availableDatabases });
       this.setState({ databaseTableMap });
     });
@@ -66,7 +69,7 @@ class UploadData extends Component {
       let query = new queryBuilder.queyBuilder();
       let url =
         query.getUrl() +
-        "/uploadcsv?+database=" +
+        "/uploadcsv?database=" +
         this.state.databaseName +
         "&table=" +
         this.state.tableName;
@@ -86,12 +89,17 @@ class UploadData extends Component {
   };
 
   columnName = (name) => {
-    return name;
+    if (name !== "") {
+      let mapper = this.state.mapper;
+      mapper[name] = name.toLowerCase();
+      console.log("mapper", mapper);
+    }
+    return name.toLowerCase();
   };
 
   onChangeDatabase = (value) => {
     this.setState({ databaseName: value });
-    console.log("ALLLOO", this.state.databaseTableMap[value]);
+    // console.log("ALLLOO", this.state.databaseTableMap[value]);
     this.setState({ currentTables: this.state.databaseTableMap[value] });
   };
 
@@ -124,6 +132,35 @@ class UploadData extends Component {
         });
       }
     }
+  };
+
+  saveMapper = () => {
+    if (this.state.databaseName === null && this.state.tableName === null) {
+      message.error("Please select the database and the table name.");
+    } else {
+      let query = new queryBuilder.queyBuilder();
+      let url =
+        query.getUrl() +
+        "/savemapper?database=" +
+        this.state.databaseName +
+        "&table=" +
+        this.state.tableName;
+      fetch(url, {
+        method: "POST",
+        body: JSON.stringify(this.state.mapper),
+      }).then((response) => {
+        console.log("response", response);
+        response.json().then((body) => {
+          console.log("body", body);
+          message.success("Saved");
+        });
+      });
+    }
+  };
+
+  onChangeMapper = (e) => {
+    let { value } = e.target;
+    console.log("Reeee:",value);
   };
 
   render() {
@@ -165,38 +202,40 @@ class UploadData extends Component {
 
     return (
       <>
-        <Select
-          showSearch
-          style={{ width: 200 }}
-          placeholder="Select Database"
-          optionFilterProp="children"
-          onChange={this.onChangeDatabase}
-          filterOption={(input, option) =>
-            option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-          }
-        >
-          {this.state.availableDatabases.map((database) => {
-            return <Option value={database}>{database}</Option>;
-          })}
-          {/* <Option value="stocks">stocks</Option> */}
-        </Select>
-        <Select
-          showSearch
-          style={{ width: 200 }}
-          placeholder="Select Table"
-          optionFilterProp="children"
-          onChange={this.onChangeTableName}
-          filterOption={(input, option) =>
-            option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-          }
-        >
-          {this.state.currentTables.map((table) => {
-            return <Option value={table}>{table}</Option>;
-          })}
-        </Select>
-        <Button type="primary" onClick={this.onClickGet}>
-          GET
-        </Button>
+        <Space direction="horizontal">
+          <Select
+            showSearch
+            style={{ width: 200 }}
+            placeholder="Select Database"
+            optionFilterProp="children"
+            onChange={this.onChangeDatabase}
+            filterOption={(input, option) =>
+              option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+            }
+          >
+            {this.state.availableDatabases.map((database) => {
+              return <Option value={database}>{database}</Option>;
+            })}
+            {/* <Option value="stocks">stocks</Option> */}
+          </Select>
+          <Select
+            showSearch
+            style={{ width: 200 }}
+            placeholder="Select Table"
+            optionFilterProp="children"
+            onChange={this.onChangeTableName}
+            filterOption={(input, option) =>
+              option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+            }
+          >
+            {this.state.currentTables.map((table) => {
+              return <Option value={table}>{table}</Option>;
+            })}
+          </Select>
+          <Button type="primary" onClick={this.onClickGet}>
+            GET
+          </Button>
+        </Space>
         <Collapse>
           <Panel header={"Table Description"} key={100}>
             <Row>
@@ -226,26 +265,53 @@ class UploadData extends Component {
         {this.state.fileHeaders.length !== 0
           ? this.state.fileHeaders.map((header, index) => {
               return (
-                <Collapse>
-                  <Panel header={Object.keys(header)[0]} key={index}>
-                    {Object.values(header)[0].map((eachHeader) => {
-                      return (
-                        <Row>
-                          <Col span={12}>{eachHeader}</Col>
-                          <Col span={12}>
-                            {
-                              <Input
-                                size="small"
-                                placeholder="column name"
-                                defaultValue={this.columnName(eachHeader)}
-                              />
-                            }
-                          </Col>
-                        </Row>
-                      );
-                    })}
-                  </Panel>
-                </Collapse>
+                <div>
+                  <Collapse>
+                    <Panel header={Object.keys(header)[0]} key={index}>
+                      {Object.values(header)[0].map((eachHeader) => {
+                        return (
+                          <Row>
+                            <Col span={12}>{eachHeader}</Col>
+                            <Col span={12}>
+                              {
+                                <Input
+                                  id="10"
+                                  size="small"
+                                  placeholder="column name"
+                                  onChange={this.onChangeMapper}
+                                  defaultValue={this.columnName(eachHeader)}
+                                />
+                              }
+                            </Col>
+                          </Row>
+                        );
+                      })}
+                      <Divider />
+                      <Row>
+                        <Col span={19}></Col>
+                        <Col span={3}>
+                          <Button
+                            type="primary"
+                            onClick={console.log("Not working")}
+                            style={{ justify: "right" }}
+                          >
+                            CREATE TABLE
+                          </Button>
+                        </Col>
+                        <Col span={2}>
+                          <Button
+                            type="primary"
+                            onClick={this.saveMapper}
+                            style={{ justify: "right" }}
+                          >
+                            SAVE
+                          </Button>
+                        </Col>
+                      </Row>
+                    </Panel>
+                  </Collapse>
+                  <Divider />
+                </div>
               );
             })
           : null}

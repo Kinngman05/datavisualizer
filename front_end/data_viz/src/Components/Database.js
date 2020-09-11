@@ -14,6 +14,7 @@ import {
 import "./css/DatabaseSettings.css";
 import UploadData from "./UploadData";
 import Analysis from "./Analysis";
+import Scheme from "./Scheme";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import io from "socket.io-client";
 
@@ -35,20 +36,20 @@ class Database extends Component {
 
     let formRef = React.createRef();
     this.setState({ formRef });
-    const socket = io("http://192.168.31.50:5000");
-    // this.setState({ socket });
+    // const socket = io("http://192.168.31.50:5000");
+    // // this.setState({ socket });
 
-    socket.on("connect", () => {
-      // console.log("Working connection", socket.id);
-      socket.emit("settings", JSON.stringify({ type: "request" }));
-    });
+    // socket.on("connect", () => {
+    //   // console.log("Working connection", socket.id);
+    //   socket.emit("settings", JSON.stringify({ type: "request" }));
+    // });
 
-    socket.on("result", (result) => {
-      // console.log(result);
-      // query = this.converte
-      // this.setState({ queries: [...this.state.queries, query] });
-      socket.disconnect();
-    });
+    // socket.on("result", (result) => {
+    //   // console.log(result);
+    //   // query = this.converte
+    //   // this.setState({ queries: [...this.state.queries, query] });
+    //   socket.disconnect();
+    // });
   }
 
   onFinish = (query) => {
@@ -423,7 +424,7 @@ class Database extends Component {
             <Analysis />
           </TabPane>
           <TabPane tab="Schema" key="4">
-            Content of Tab Pane 4
+            <Scheme />
           </TabPane>
         </Tabs>
       </div>

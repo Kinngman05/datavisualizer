@@ -8,6 +8,7 @@ from flask_cors import CORS, cross_origin
 from flask import flash, request, redirect, url_for
 from werkzeug.utils import secure_filename
 from pandas import read_csv
+from datetime import date
 
 import insert_csv_data as csv
 import analysis
@@ -69,7 +70,7 @@ def process_query(query):
     process.input(query, 0)
     result = process.processRequest()
     if(result):
-        print("The result is:", result)
+        logging.debug("The result is:"+ str(result))
         emit('result', str(json.dumps(result)))
     else:
         logging.warning("No result sent back from the database")
@@ -129,7 +130,7 @@ def allowed_file(filename):
 #
 
 
-@app.route('/uploadcsv', methods=['GET',     'POST'])  # Probably need to remove GET
+@app.route('/uploadcsv', methods=['GET','POST'])  # Probably need to remove GET
 @cross_origin()
 def upload_file():
     logging.info(f"Upload request from {request.remote_addr}")
@@ -151,57 +152,131 @@ def upload_file():
             # return redirect(request.url)
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
-            logging.info(
-                f"Saving file {filename} at {app.config['UPLOAD_FOLDER']}")
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file_headers = list(read_csv(file_path).columns)
+            logging.info(f"Saving file {filename} at {app.config['UPLOAD_FOLDER']}")
             file.save(file_path)
-            csv_file = csv.csvHandler(file_path)
-            querys = csv_file.get_querys()
-            for query in querys:
-                # process_query(query)
-                process.input(query, 0)
-                result = process.processRequest()
-                if(result):
-                    print("The result is:", result)
-                    emit('result', str(json.dumps(result)))
-                else:
-                    logging.warning("No result sent back from the database")
-            analyze = analysis.Analysis(file_path, process)
-            analyze.analyze_vwap([2,3,5,21])
-            # return redirect(url_for('uploaded_file',filename=filename))
-            return json.dumps({"status": True, "message": f"{file.filename}"})
+            database_name = request.args.get('database')
+            table_name = request.args.get('table')
+            # mapper = request.args.get('mapper')
+            with open("analysis_code.json","r") as mapper_file:
+                print(f"UPLOAD TO {database_name}.{table_name}")
+                data = json.load(mapper_file)
+                try:
+                    database = data[database_name]
+                    table = database[table_name]
+                    mapper = table['mapper']
+                    code = table['code']
+                    query = '{"HEADER":{"DATABASE":"'+database_name+'","TABLE_NAME":"'+table_name+'","REQUEST_TYPE":"describe"},"DATA":{"FIELDS":null,"SET":null,"WHERE":null},"FOOTER":{"DATA ABOUT THE REQUEST":null,"COMMENT":null,"DEP":null,"UPDATE":null}}'
+                    process.input(query,0)
+                    dtypes = process.processRequest()
+                    csv_file = csv.csvHandler(file_path,database_name,table_name,mapper,dtypes,code)
+                    csv_file.generate_analytics()
+                    querys = csv_file.get_querys()
+                    # print(querys)
+                    for query in querys:
+                        process.input(query, 0)
+                        result = process.processRequest()
+                    return json.dumps({"status": True, "message": f"{file.filename}"})
+                except KeyError as err:
+                    print("The ERROR is:",err)
+                    return json.dumps({"status": False, "error": f"Please save mapper for {file.filename}"})
         else:
             return json.dumps({"status": False, "error": f"{file.filename}:Invalid file Extension!"})
 
-@app.route('/getuploadheaders', methods=['GET', 'POST'])  # Probably need to remove GET
+@app.route('/pythoncode', methods=['GET','POST'])  # Probably need to remove GET
 @cross_origin()
-def return_headers():
-    logging.info(f"Header request from {request.remote_addr}")
+def save_code():
+    logging.info(f"Saving code from {request.remote_addr}")
+    # print("This is save_code()")
     if request.method == 'POST':
-        # check if the post request has the file part
-        # print(request.files)
-        if 'file' not in request.files:
-            logging.warning("file not in request.files")
-            # flash('No file part')
-            return json.dumps({"status": False, "error": "Error in upload to server!"})
-            # return redirect(request.url)
-        file = request.files['file']
-        # if user does not select file, browser also
-        # submit an empty part without filename
-        if file.filename == '':
-            logging.warning('Invalid file name!')
-            # flash('No selected file')
-            return json.dumps({"status": False, "error": "Invalid file name!"})
-            # return redirect(request.url)
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            logging.info(f"Getting file headers of {filename}")
-            file_headers = list(read_csv(file_path).columns)
-            return json.dumps({"status": True, "message": f"{file_headers}"})
-        else:
-            return json.dumps({"status": False, "error": f"{file.filename}:Invalid file Extension!"})
+        database_name = request.args.get('database')
+        table_name = request.args.get('table')
+        data = request.data
+        data = data.decode("utf-8").strip()
+        print("database_name",database_name)
+        print("table_name",table_name)
+        print("data",data)
+        with open("analysis_code.json","r+") as code_file:
+            file_data = json.load(code_file)
+            print("data read from the file is",file_data)
+            db = file_data.get(database_name)
+            if db:
+                tbl = db.get(table_name)
+                if tbl:
+                    last_modified = tbl.get("last_modified")
+                    code = tbl.get("code")
+                    mapper = tbl.get("mapper")
+                    tbl.update({"last_modified": date.today().strftime("%d-%m-%Y")})
+                    tbl.update({"code": data})
+                    file_data.update({database_name: db})
+                else:
+                    dictionary = {}
+                    dictionary.update({"last_modified": date.today().strftime("%d-%m-%Y")})
+                    dictionary.update({"mapper": None})
+                    dictionary.update({"code": data})
+                    db.update({table_name: dictionary})
+                    file_data.update({database_name: db})
+            else:
+                x = {}
+                dictionary = {}
+                dictionary.update({"last_modified": date.today().strftime("%d-%m-%Y")})
+                dictionary.update({"mapper": None})
+                dictionary.update({"code": data})
+                x.update({table_name: dictionary})
+                file_data.update({database_name: x})
+            print("The file data being written the file is:\n",json.dumps(file_data))
+            print(json.dumps(file_data))
+            code_file.seek(0)
+            code_file.truncate()
+            code_file.write(json.dumps(file_data))
+            return json.dumps({"status": True, "message": f"Success"})
+        return json.dumps({"status": False, "message": "Failed"})
 
+@app.route('/savemapper', methods=['GET','POST'])  # Probably need to remove GET
+@cross_origin()
+def save_mapper():
+    logging.info(f"Saving mapper from {request.remote_addr}")
+    if request.method == 'POST':
+        database_name = request.args.get('database')
+        table_name = request.args.get('table')
+        data = request.data
+        # print(dir(request))
+        # return json.dumps({"status": False, "message": "Failed"})
+        data = json.loads(data.decode("utf-8").strip())
+        logging.debug("Data is"+str(data))
+        with open("analysis_code.json","r+") as code_file:
+            file_data = json.load(code_file)
+            db = file_data.get(database_name)
+            if db:
+                tbl = db.get(table_name)
+                if tbl:
+                    last_modified = tbl.get("last_modified")
+                    code = tbl.get("code")
+                    mapper = tbl.get("mapper")
+                    tbl.update({"last_modified": date.today().strftime("%d-%m-%Y")})
+                    tbl.update({"mapper": data})
+                    file_data.update({database_name: db})
+                else:
+                    dictionary = {}
+                    dictionary.update({"last_modified": date.today().strftime("%d-%m-%Y")})
+                    dictionary.update({"mapper": data})
+                    dictionary.update({"code": None})
+                    db.update({table_name: dictionary})
+                    file_data.update({database_name: db})
+            else:
+                x = {}
+                dictionary = {}
+                dictionary.update({"last_modified": date.today().strftime("%d-%m-%Y")})
+                dictionary.update({"mapper": data})
+                dictionary.update({"code": None})
+                x.update({table_name: dictionary})
+                file_data.update({database_name: x})
+            print("The file data being written the file is:\n",json.dumps(file_data))
+            code_file.seek(0)
+            code_file.truncate()
+            code_file.write(json.dumps(file_data))
+            return json.dumps({"status": True, "message": "Success"})
+        return json.dumps({"status": False, "message": "Failed"})
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0')

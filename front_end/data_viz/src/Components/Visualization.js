@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import GoogleChartElementNew from "./ChartElements/GoogleChartElementNew";
+import GoogleChartElement from "./ChartElements/GoogleChartElement";
 
 class Visualization extends Component {
   constructor(props) {
@@ -8,7 +8,7 @@ class Visualization extends Component {
   }
 
   render() {
-    return <GoogleChartElementNew />;
+    return <GoogleChartElement />;
   }
 }
 
